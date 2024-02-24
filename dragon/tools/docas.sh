@@ -7,5 +7,8 @@ if [ "$PROGRAM" == "" ]; then
   PROGRAM=src/cas/ray2c.cas
 fi
 
-xroar -machine dragon32 --rompath $ROMPATH -gdb -type "CLOAD" $PROGRAM
+
+if [ $? -eq 0 ]; then
+  ./emu.sh -o "-type CLOAD" $PROGRAM
+fi
 
