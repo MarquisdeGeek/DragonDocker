@@ -1,6 +1,11 @@
 FROM ubuntu:22.04
-LABEL vendor=em.ulat.es
-LABEL es.ulat.em.image.authors="MarquisdeGeek@gmail.com"
+LABEL Version="1.2" \
+      Date="2024-Feb-24" \
+      Docker_Version="Docker version 25.0.3, build 4debf41" \
+      Vendor="em.ulat.es" \
+      Maintainer="Steven Goodwin - Marquis de Geek (@marquisdeGeek)" \
+      Description="A basic Docker container to compile and use Dragon tools"
+
 ARG   USER_NAME=user
 ARG   USER_PASSWORD=${USER_NAME}
 ARG   USER_PATH=/home/${USER_NAME}
@@ -16,11 +21,13 @@ RUN apt-get update && \
 
 
 # System-wide installation:
-#   the emulator and assembler
+#   the emulator, assembler, and C compiler to build cmoc (the 6809 C compiler)
 RUN apt-get install -y --no-install-recommends --no-install-suggests software-properties-common dirmngr apt-transport-https lsb-release ca-certificates gpg-agent && \
     add-apt-repository -y ppa:sixxie/ppa && \
     apt-get update && \
     apt-get install -y xroar asm6809 && \
+    apt-get install -y bison flex && \
+    apt-get install -y make g++ && \
     apt-get remove --purge --auto-remove -y
 
 
@@ -51,6 +58,31 @@ RUN cd ${USER_PATH}/dragon && \
     unzip pydc.zip && \
     mv PyDragon32-master contrib && \
     rm pydc.zip
+
+
+# C compilation tools (currently using CMOC, although gcc6809 exists)
+# The make install process puts the tools in the global path
+USER root
+RUN cd ${USER_PATH}/dragon && \
+    wget http://www.lwtools.ca/releases/lwtools/lwtools-4.22.tar.gz && \
+    tar xfz lwtools-4.22.tar.gz && \
+    cd lwtools-4.22 && \
+    make && \
+    make install && \
+    cd .. && \
+    rm -rf lwtools-4.22 && \
+    rm lwtools-4.22.tar.gz
+
+RUN cd ${USER_PATH}/dragon && \
+    wget http://perso.b2b2c.ca/~sarrazip/dev/cmoc-0.1.88.tar.gz && \
+    tar xfz cmoc-0.1.88.tar.gz && \
+    cd cmoc-0.1.88 && \
+    ./configure && \
+    make && \
+    make install && \
+    cd .. && \
+    rm -rf cmoc-0.1.88 && \
+    rm cmoc-0.1.88.tar.gz
 
 
 # Our glue tools

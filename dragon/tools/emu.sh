@@ -4,7 +4,7 @@ ROMPATH=roms
 MACHINE=dragon32
 OPTIONS=""
 
-while getopts ":o:" FLAG; do
+while getopts ":o:r:m:" FLAG; do
   case "$FLAG" in
         o) # set options
                 OPTIONS=$OPTARG
