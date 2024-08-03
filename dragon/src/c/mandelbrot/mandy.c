@@ -99,6 +99,17 @@ void mandyEdge(tScreenWidth sx1, tScreenHeight sy1, tScreenWidth sx2, tScreenHei
   for (tScreenHeight screenY = sy1; screenY < sy2; screenY += size) {
     for (tScreenWidth screenX = sx1; screenX < sx2; screenX += size) {
       unsigned char initialK = mandyPlot(screenX, screenY);
+
+      // The lowest level of recursion, with start size of 16, involves a 3x3 block and a size step of 1.
+      // Since this results in all 4 corners being the same point, we don't bother with the corner check,
+      // because the 'initialK = mandyPlot' code has already done the single pixel we need.
+      // Therefore, continue with the next pixel.
+      // Note: We _could_ rework this code to check the edges of the 3x3 block and fill-in the single
+      // pixel in the middle (if all K's are equal). That is left as a PR for the reader... :)
+      if (size == 1) {
+        continue;
+      }
+
       unsigned char allIdentical = 1; /// bool
 
       for (tScreenWidth edgeCount = 0; edgeCount < size; ++edgeCount) {
