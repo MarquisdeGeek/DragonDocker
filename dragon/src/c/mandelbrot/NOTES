@@ -1,0 +1,10 @@
+Given the screen is 4:3 ratio, and the render is assumed square, there is an inaccuracy in the zoom and render logic.
+
+Do I re-ord the interface to have a square fractal on the LHS, and UI on the RHS?
+
+Do I pan-and-scan?
+
+Go widescreen?
+
+
+Answers in a PR!

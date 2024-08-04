@@ -11,8 +11,8 @@
  * not value, and using the 1st arg as the destimation/result.
  * */
 
-#ifndef Q_H
-#define Q_H
+#ifndef MANDEL_QQ_H
+#define MANDEL_QQ_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,9 +25,45 @@ typedef unsigned short uint16_t;
 typedef unsigned long uint32_t;
 
 
+// Hi-precision mode uses some fixed-point shortcuts. Unless you're au fair with FP the assumptions made
+// made appear opaque. (And certainly won't match the maths in wikipedia!)
+#if HIPRECISION
+// Magic numbers!
+// qbits: 256, 192
+// 12   : 16,  21
+// 11   :  8   11
+// 10   :  4    5  <-- more bits than this and weird fringing occurs. Might be bug? Might be a limit?
+//  9   :  2    3
+//  8   :  1    1
+#define QBITS       (10)
 
+#if QBITS == 12
+#define QBITS_RECIPROCAL_256       (16)
+#define QBITS_RECIPROCAL_192       (21)
+
+#elif QBITS == 11
+#define QBITS_RECIPROCAL_256       (8)
+#define QBITS_RECIPROCAL_192       (11)
+
+#elif QBITS == 10
+#define QBITS_RECIPROCAL_256       (4)
+#define QBITS_RECIPROCAL_192       (5)
+
+#elif QBITS == 9
+#define QBITS_RECIPROCAL_256       (2)
+#define QBITS_RECIPROCAL_192       (3)
+
+#elif QBITS == 8
+#define QBITS_RECIPROCAL_256       (1)
+#define QBITS_RECIPROCAL_192       (1)
+
+#endif
+
+#else
 // For 16 bit calculations, a screen width of 256 requires this to be no larger than 6
 #define QBITS       (6)
+#endif
+
 
 #if 0
 #include <stdint.h>
@@ -57,7 +93,8 @@ typedef uint32_t lu_t; /* double Q width,  unsigned */
 #define QHIGH       (1ULL << (QBITS  - 1ULL))
 // MSB, i.e. sign bit
 #define QQHIGH      (1ULL << (sizeof(q_t)*8  - 1ULL))
-
+#define QQMASK_INTEGER      (~((1<<QBITS)-1))       // isolates the integer, i.e. int(q) is q &= QQMASK_INTEGER
+#define QQMASK_FRACTION     (((1<<QBITS)-1))        // isolates the fraction, i.e. fract(q) is q &= QQMASK_FRACTION
 
 // The Code:
 

@@ -1,5 +1,10 @@
+#include <cmoc.h>
+
 #include "qq.h"
 #include "render.h"
+#include "presets.h"
+#include "ui.h"
+#include "mandy.h"
 
 
 // Prototypes
@@ -7,21 +12,17 @@ void initGlobals(void);
 void mandyEdge(tScreenWidth sx1, tScreenHeight sy1, tScreenWidth sx2, tScreenHeight sy2, unsigned short size);
 
 // Everything as globals, for speed
-const unsigned char maxIteraions = 32;
-q_t one, two, zero;
+unsigned char maxIteraions = 32;
+static q_t one, two, zero;
+static q_t escapeValue;
+
+// The only reason these are static is to avoid getters for debug stats
 q_t mandyspaceXMinimum, mandyspaceXMaximum, mandyspaceYMinimum, mandyspaceYMaximum;
-q_t escapeValue;
 q_t screenspaceXIncrement, screenspaceYIncrement;
 
 
 // Implementation
 void initGlobals(void) {
-
-  mandyspaceXMinimum = qqintfract(-2, 0, 10);   // i.e. -2.1 (because of the way we represent 1/10)
-  mandyspaceXMaximum = qqintfract(2, 0, 2);
-
-  mandyspaceYMinimum = qqintfract(-1, 8, 10);
-  mandyspaceYMaximum = qqintfract(1, 4, 5);
 
   escapeValue = qqint(4);
 
@@ -29,6 +30,79 @@ void initGlobals(void) {
   one  = qqint(1);
   two  = qqint(2);
 
+
+  q_t xmin = qqintfract(-2, 0, 10);   // i.e. -2.1 (because of the way we represent 1/10)
+  q_t xmax = qqintfract(2, 0, 2);
+
+  q_t ymin = qqintfract(-1, 8, 10);
+  q_t ymax = qqintfract(1, 4, 5);
+
+  prepareRenderFor(xmin, xmax, ymin, ymax);
+
+  setMaxIterations(32);
+}
+
+
+// WARNING: We limit to 1-255 for performance reasons only
+// We can't get deeper enough on 16-bit FP to warrant more iterations.
+// Therefore, zero is the only non-permissible value
+void setMaxIterations(unsigned char its) {
+  maxIteraions = its ? its : 1;
+}
+
+
+void decMaxIterations(unsigned char deltaIts) {
+  if (deltaIts >= maxIteraions) {
+    // Trying to decrement by more iterations than we have.
+    // So force it to the lowest allowed
+    setMaxIterations(1);
+  } else {
+    setMaxIterations(maxIteraions - deltaIts);
+  }
+}
+
+
+void incMaxIterations(unsigned char deltaIts) {
+  if (255-deltaIts < maxIteraions) {
+    // This would exceed 255, so clamp.
+    // (Note the expression order elliminates over/underflow in the primary case)
+    setMaxIterations(255);
+  } else {
+    setMaxIterations(maxIteraions + deltaIts);
+  }
+}
+
+
+unsigned char getMaxIterations() {
+  return maxIteraions;
+}
+
+
+
+// All values are in "mandelbrot space" co-ords (usually +/-2 on each axis)
+void prepareRenderFor(q_t xmin, q_t xmax, q_t ymin, q_t ymax) {
+
+  // Set-up the main space vars
+  mandyspaceXMinimum = xmin;
+  mandyspaceXMaximum = xmax;
+  mandyspaceYMinimum = ymin;
+  mandyspaceYMaximum = ymax;
+
+  // Determine the delta increments for each screen position
+#if HIPRECISION
+  q_t recip256 = QBITS_RECIPROCAL_256;
+  q_t recip192 = QBITS_RECIPROCAL_192;
+
+  //  Screen sizes are 1px larger than the maximum valid value
+  screenspaceXIncrement = mandyspaceXMaximum;
+  qqsub( & screenspaceXIncrement, & mandyspaceXMinimum); // mandySpace width
+  qqmul( & screenspaceXIncrement, & recip256);
+
+  screenspaceYIncrement = mandyspaceYMaximum;
+  qqsub( & screenspaceYIncrement, & mandyspaceYMinimum);
+  qqmul( & screenspaceYIncrement, & recip192);
+
+#else
   //  Screen sizes are 1px larger than the maximum valid value
   q_t screenspaceXMaximum = qqint(SCREEN_WIDTH);
   q_t screenspaceYMaximum = qqint(SCREEN_HEIGHT);
@@ -40,10 +114,70 @@ void initGlobals(void) {
   screenspaceYIncrement = mandyspaceYMaximum;
   qqsub( & screenspaceYIncrement, & mandyspaceYMinimum);
   qqdiv( & screenspaceYIncrement, & screenspaceYMaximum);
+#endif
 }
+
+
+q_t getMandySpaceXFromScreenX(tScreenWidth scrx) {
+#if HIPRECISION
+
+    // We can multiple the non-fixed point version of uiX because
+    // 1. There is no space in the integral part to store it
+    // 2. Shifting it up, multiplying, and shifting it back again is a NOP
+    // (We only do it in the non-hi-precision as a teaching aid)
+
+    return mandyspaceXMinimum + (scrx * screenspaceXIncrement);
+
+#else
+    q_t mandyX = qqint(scrx);
+    qqmul(&mandyX, &screenspaceXIncrement);
+    qqadd(&mandyX, &mandyspaceXMinimum);
+
+    return mandyX;
+#endif
+}
+
+
+q_t getMandySpaceYFromScreenY(tScreenHeight scry)
+{
+#if HIPRECISION
+    return mandyspaceYMinimum + (scry * screenspaceYIncrement);
+
+#else
+    q_t mandyY = qqint(scry);
+    qqmul(&mandyY, &screenspaceYIncrement);
+    qqadd(&mandyY, &mandyspaceYMinimum);
+
+    return mandyY;
+#endif
+}
+
+
+// These are screen co-ords, and require the existing mandy-space co-ords to be valid
+void prepareRenderZoomAtScreen(tScreenWidth scrx0, tScreenWidth scrx1, tScreenHeight scry0, tScreenHeight scry1) {
+
+  q_t xmin = getMandySpaceXFromScreenX(scrx0);
+  q_t xmax = getMandySpaceXFromScreenX(scrx1);
+
+  q_t ymin = getMandySpaceYFromScreenY(scry0);
+  q_t ymax = getMandySpaceYFromScreenY(scry1);
+
+  // Now re-compute the increments
+  prepareRenderFor(xmin, xmax, ymin, ymax);
+}
+
+
 
 unsigned char mandyPlot(tScreenWidth x, tScreenHeight y) {
 
+#if HIPRECISION
+  q_t mandyspaceXpos0 = (x) * screenspaceXIncrement;
+  qqadd( & mandyspaceXpos0, & mandyspaceXMinimum);
+
+  q_t mandyspaceYpos0 = (y) * screenspaceYIncrement;
+  qqadd( & mandyspaceYpos0, & mandyspaceYMinimum);
+
+#else
   q_t mandyspaceXpos0 = qqint(x);
   qqmul( & mandyspaceXpos0, & screenspaceXIncrement);
   qqadd( & mandyspaceXpos0, & mandyspaceXMinimum);
@@ -51,7 +185,7 @@ unsigned char mandyPlot(tScreenWidth x, tScreenHeight y) {
   q_t mandyspaceYpos0 = qqint(y);
   qqmul( & mandyspaceYpos0, & screenspaceYIncrement);
   qqadd( & mandyspaceYpos0, & mandyspaceYMinimum);
-
+#endif
 
   unsigned char iterations = 0;
   q_t mandyspaceX, mandyspaceY, mandyspaceXSquared, mandyspaceYSquared;
@@ -148,6 +282,9 @@ void mandyEdge(tScreenWidth sx1, tScreenHeight sy1, tScreenWidth sx2, tScreenHei
             mandyEdge(screenX+size/2,   screenY+size2,  screenX + size-1,   screenY + size-1,   size2-2); // BR
         }
 
+        // p.s. if recursion scares you, you can replace the above block with two nested loops (for x & y)
+        // like the 'allIdentical' part above, but replace 'plot' with 'mandyPlot'
+
       }
 
     }
@@ -155,16 +292,31 @@ void mandyEdge(tScreenWidth sx1, tScreenHeight sy1, tScreenWidth sx2, tScreenHei
 }
 
 
+void mandyRender(void) {
+  mandyEdge(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 16);
+}
+
+
+
 // Begin here
 int main(void) {
   initGlobals();
 
+  showInstructions();
+  (void)waitForKey();
+
   initGraphicsMode();
-  cls();
+  clearscreen();
 
-  mandyEdge(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 16);
+#if START_PRESET
+  recallPreset(0);
+#else
+  mandyRender();
+#endif
 
-  while (1);
+  runUI();
+
+  printf("STEEV SAYS thank you FOR TRYING THIS!\n");
 
   return 0;
 }

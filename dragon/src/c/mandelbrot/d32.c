@@ -1,67 +1,66 @@
+#include <cmoc.h>
 #include "render.h"
 
+unsigned char waitForKey() {
+    unsigned char key;
 
-void waitForKey() {
     asm {
 KEYWAIT JSR     [$A000]
         TSTA
         BEQ     KEYWAIT
+
+        STA     :key
     }
+
+    return key;
+}
+
+
+void poke(short addr, unsigned char data) {
+    *(unsigned char *)addr = data;
+}
+
+
+unsigned char peek(short addr) {
+    return *(unsigned char *)addr;
 }
 
 
 void setPMode(/*TODO, mode select*/) {
     asm {
-        LDA     $FF22
-        ANDA    #7
-        ORA     #$F0
+        LDA     #$F8
         STA     $FF22
 
         STA     $FFC0
         STA     $FFC3
         STA     $FFC5
 
-        LDA     $BC
-
-SETPORG LSRA
-        LDX     #$FFC6
-PLOOP   CLRB
-        LSRA
-        ROLB
-        STA     B,X
-        LEAX    2,X
-        CMPX    #$FFD4
-        BNE     PLOOP
-
+        ; Clear the 7 screen address bits
+        STA     $FFC6+1 // bit 0, set to 1 : addr=$0200
+        STA     $FFC8+1 // bit 1, set to 1 : addr=$0400
+        STA     $FFCA+0 // bit 2, set to 0 : addr=$0800
+        STA     $FFCC+0 // bit 3, set to 0 : addr=$1000
+        STA     $FFCE+0 // bit 4, set to 0 : addr=$2000
+        STA     $FFD0+0 // bit 5, set to 0 : addr=$4000
+        STA     $FFD2+0 // bit 6, set to 0 : addr=$8000
     }
 }
 
 
-void cls() {
-    //
-    asm {
-PCLS    LDA     $BC                     ; First graphics page
-        CLRB                            ; ... convert to 16-bit addr
-        TFR     D,X                     ; ... and load it into X
-        LDY     #$1800                  ; Clear 4 graphics pages (6KB)
-        ;DECB                            ; B = $FF
-PCLSLOOP       STB     ,X+
-        LEAY    -1,Y
-        BNE     PCLSLOOP
-        RTS
-    }
+void clearscreen() {
+    unsigned char* pGraphics = (unsigned char*)1536;
+    memset(pGraphics, 0, 6144);
+}
+
+
+void blit(const unsigned char* pScreen) {
+    unsigned char* pGraphics = (unsigned char*)1536;
+    memcpy(pGraphics, pScreen, 6144);
 }
 
 
 void initGraphicsMode(void) {
    setPMode();
-   cls();
-}
-
-
-
-unsigned char peek(short addr) {
-    return *(unsigned char *)addr;
 }
 
 
@@ -74,3 +73,32 @@ void plot(tScreenWidth x, tScreenHeight y) {
     *pScreen |= ((unsigned char)(128 >> (x & 7)));
 }
 
+
+// THese are expected to be in multiples of 8, making the screen 0-31, 0-23
+void xorBlock(tScreenWidth x8, tScreenHeight y8, int size) {
+    unsigned char* pScreen = (unsigned char*)  (256 * *(char *)0xbc); //inlined peek
+
+    pScreen += x8;
+    pScreen += y8 * (8 * 32);
+
+    for(int y=0;y<8 * size;++y) {
+        for(int x=0;x<size;++x) {
+            *(pScreen + x + y*32) ^= 0xff;
+        }
+    }
+
+}
+
+
+// w===8
+void xorUDG(tScreenWidth x8, tScreenHeight y8, int w, int h, unsigned char*pData) {
+    unsigned char* pScreen = (unsigned char*)  (256 * *(char *)0xbc); //inlined peek
+
+    pScreen += x8;
+    pScreen += y8 * (8 * 32);
+
+    for(int y=0;y<h;++y) {
+        *(pScreen + y*32) ^= pData[h-y];
+    }
+
+}
