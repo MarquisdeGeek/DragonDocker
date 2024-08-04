@@ -7,7 +7,7 @@ if [ "$PROGRAM_DIRECTORY" == "" ]; then
 fi
 
 WORKPATH=`pwd`/out/src/c
-OUTFILEBASE=$WORKPATH/`basename $PROGRAM`
+OUTFILEBASE=$WORKPATH/`basename $PROGRAM_DIRECTORY`
 
 mkdir -p $WORKPATH 2>/dev/null
 
