@@ -74,20 +74,20 @@ RUN cd ${USER_PATH}/dragon && \
     rm lwtools-4.22.tar.gz
 
 RUN cd ${USER_PATH}/dragon && \
-    wget http://perso.b2b2c.ca/~sarrazip/dev/cmoc-0.1.88.tar.gz && \
-    tar xfz cmoc-0.1.88.tar.gz && \
-    cd cmoc-0.1.88 && \
+    wget http://perso.b2b2c.ca/~sarrazip/dev/cmoc-0.1.90.tar.gz && \
+    tar xfz cmoc-0.1.90.tar.gz && \
+    cd cmoc-0.1.90 && \
     ./configure && \
     make && \
     make install && \
     cd .. && \
-    rm -rf cmoc-0.1.88 && \
-    rm cmoc-0.1.88.tar.gz
+    rm -rf cmoc-0.1.90 && \
+    rm cmoc-0.1.90.tar.gz
 
 
 # Our glue tools
 RUN mkdir -p ${USER_PATH}/dragon
-COPY dragon/tools/* ${USER_PATH}/dragon
+COPY dragon/tools/* ${USER_PATH}/dragon/
 
 
 WORKDIR ${USER_PATH}/dragon
