@@ -36,15 +36,24 @@ emulator with:
 ```
 
 for a simple 'clear screen' assembly program, held in `src/asm/test`. Pass a filename to this program
-to assembly other code. The resultant binary is written to `out/src/asm/test/main.s.bin`
+to assembly other code. e.g.
 
+```
+./doasm.sh src/asm/test/main.s
+```
+
+The resultant binary is written to `out/src/asm/test/main.s.bin`
+
+The script will make some educated guesses to the path if only `test` (e.g.) is specified.
+
+For BASIC, use:
 ```
 ./dobas.sh
 ```
 
 to convert a plain text BASIC program into a CAS file, written to `out/src/bas/test.cas`.
 
-And finally, run any existing .cas files with the wrapper script of:
+And then, to run this or any existing .cas files used the wrapper script of:
 
 ```
 ./docas.sh
@@ -52,6 +61,15 @@ And finally, run any existing .cas files with the wrapper script of:
 
 Because the container mounts a directory on the host machine, you can edit the source using
 whatever tools feel good, without having to install them into the container.
+
+
+You can also compile C with a similar script:
+
+```
+./doc.sh mandelbrot
+```
+
+This, too, has logic to prepend an assumed path of `src/c` and use the `Makefile` in the directory.
 
 
 #  Ending the session
