@@ -33,9 +33,10 @@ RUN apt-get install -y --no-install-recommends --no-install-suggests software-pr
 
 # User-wide installation:
 USER $USER_NAME
+COPY dist/* ${USER_PATH}/dist/
 
 
-# The ROM
+# The ROM (use this file from its remote location, to limit legal limitations)
 RUN cd ${USER_PATH} && \
     wget -O romdata.zip https://archive.worldofdragon.org/phpBB3/download/file.php?id=5875 && \
     unzip romdata.zip && \
@@ -53,28 +54,27 @@ RUN cd ${USER_PATH}/dragon && \
 
 USER $USER_NAME
 RUN cd ${USER_PATH}/dragon && \
-    wget -O pydc.zip https://github.com/jedie/PyDragon32/archive/refs/heads/master.zip && \
     mkdir contrib && \
-    unzip pydc.zip && \
-    mv PyDragon32-master contrib && \
-    rm pydc.zip
+    cd contrib && \
+    unzip ${USER_PATH}/dist/PyDragon32-master.zip
+
+USER root
+RUN rm -f ${USER_PATH}/dist/PyDragon32-master.zip
 
 
 # C compilation tools (currently using CMOC, although gcc6809 exists)
 # The make install process puts the tools in the global path
 USER root
-RUN cd ${USER_PATH}/dragon && \
-    wget http://www.lwtools.ca/releases/lwtools/lwtools-4.22.tar.gz && \
+RUN cd ${USER_PATH}/dist && \
     tar xfz lwtools-4.22.tar.gz && \
     cd lwtools-4.22 && \
     make && \
     make install && \
     cd .. && \
-    rm -rf lwtools-4.22 && \
-    rm lwtools-4.22.tar.gz
+    rm -f lwtools-4.22.tar.gz && \
+    rm -rf lwtools-4.22
 
-RUN cd ${USER_PATH}/dragon && \
-    wget http://gvlsywt.cluster051.hosting.ovh.net/dev/cmoc-0.1.96.tar.gz && \
+RUN cd ${USER_PATH}/dist && \
     tar xfz cmoc-0.1.96.tar.gz && \
     cd cmoc-0.1.96 && \
     ./configure && \
@@ -82,7 +82,7 @@ RUN cd ${USER_PATH}/dragon && \
     make install && \
     cd .. && \
     rm -rf cmoc-0.1.96 && \
-    rm cmoc-0.1.96.tar.gz
+    rm -f ${USER_PATH}/dist/cmoc-0.1.96.tar.gz
 
 
 # Our glue tools
