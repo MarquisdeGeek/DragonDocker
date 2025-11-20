@@ -1,5 +1,5 @@
 FROM ubuntu:22.04
-LABEL Version="1.2" \
+LABEL Version="1.3" \
       Date="2024-Feb-24" \
       Docker_Version="Docker version 25.0.3, build 4debf41" \
       Vendor="em.ulat.es" \
@@ -16,18 +16,32 @@ RUN useradd -ms /bin/bash $USER_NAME && echo "$USER_NAME:$USER_PASSWORD" | chpas
 
 # Base OS and tools
 RUN apt-get update && \
-    apt-get install -y wget unzip git sudo && \
+    apt-get install -y \
+        git     \
+        sudo    \
+        unzip   \
+        wget && \
     apt-get remove --purge --auto-remove -y
 
 
 # System-wide installation:
 #   the emulator, assembler, and C compiler to build cmoc (the 6809 C compiler)
-RUN apt-get install -y --no-install-recommends --no-install-suggests software-properties-common dirmngr apt-transport-https lsb-release ca-certificates gpg-agent && \
+RUN apt-get install -y --no-install-recommends --no-install-suggests \
+        apt-transport-https \
+        ca-certificates \
+        dirmngr \
+        gpg-agent \
+        lsb-release \
+        software-properties-common  && \
     add-apt-repository -y ppa:sixxie/ppa && \
     apt-get update && \
-    apt-get install -y xroar asm6809 && \
-    apt-get install -y bison flex && \
-    apt-get install -y make g++ && \
+    apt-get install -y \
+        asm6809  \
+        bison \
+        flex \
+        g++ \
+        make \
+        xroar && \
     apt-get remove --purge --auto-remove -y
 
 
